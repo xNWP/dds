@@ -4,9 +4,9 @@ use k9::{
     console_command,
     entity_component::Entity,
     graphics::{component::TexQuadBase, GraphicsComponent},
-    system::FrameState,
+    system::{FrameState, FirstCallState},
     uuid::Uuid,
-    System, SystemCallbacks,
+    System, SystemCallbacks, debug_ui::{DebugUiWindow, ConsoleCommand, ConsoleCommandInterface},
 };
 
 fn main() {
@@ -46,8 +46,8 @@ impl System for GameDirector {
     const UUID: Uuid = k9::uuid::uuid!("6ee51c3f-1e07-40e2-a40d-1f6f16e17a6f");
 }
 impl SystemCallbacks for GameDirector {
-    fn first_call(&mut self, state: FrameState) {
-        let ents = state.ents;
+    fn first_call(&mut self, first_call_state: FirstCallState, frame_state: FrameState) {
+        let ents = frame_state.ents;
         let mut ent = Entity::new();
         let tex_comp = GraphicsComponent::TexQuad(TexQuadBase::new());
         ent.add_component(tex_comp);
@@ -61,7 +61,7 @@ impl SystemCallbacks for GameDirector {
         log::error!("have some error");
 
         let xyz = self.xyz.clone();
-        let cc = console_command!({x: f32, y: f32, z: f32,}, |x, y, z| {
+        let cc = console_command!({x: f32, y: f32, z: f32,}, |_, x, y, z| {
             let mut xyz = xyz.write().unwrap();
             xyz.0 = x;
             xyz.1 = y;
@@ -69,22 +69,22 @@ impl SystemCallbacks for GameDirector {
             Ok(())
         });
 
-        state.console_commands.insert("foo".to_owned(), cc);
+        first_call_state.console_commands.insert("foo".to_owned(), cc);
 
-        let cc = console_command!({x: f32, y: f32, z: f32,}, |x, y, z| {
+        let cc = console_command!({x: f32, y: f32, z: f32,}, |_, x, y, z| {
             Ok(())
         });
 
-        state.console_commands.insert("four".to_owned(), cc);
+        first_call_state.console_commands.insert("four".to_owned(), cc);
 
-        let cc = console_command!({x: f32, y: f32, z: f32,}, |x, y, z| {
+        let cc = console_command!({x: f32, y: f32, z: f32,}, |_, x, y, z| {
             Ok(())
         });
 
-        state.console_commands.insert("friday".to_owned(), cc);
+        first_call_state.console_commands.insert("friday".to_owned(), cc);
 
         for _ in 0..100 {
-            let cc = console_command!({x: f32, y: f32, z: f32,}, |x, y, z| {
+            let cc = console_command!({x: f32, y: f32, z: f32,}, |_, x, y, z| {
                 Ok(())
             });
 
@@ -98,10 +98,19 @@ impl SystemCallbacks for GameDirector {
                 v
             };
 
-            state
+            first_call_state
                 .console_commands
                 .insert(format!("many_{random_bytes}"), cc);
         }
+
+        first_call_state.debug_windows.insert("foo_window".to_owned(), Box::new(FooWindow{}));
+
+        let cc_foo_window: ConsoleCommand = console_command!({open: bool}, |mut ccf: ConsoleCommandInterface, open: bool| {
+            ccf.set_open_debug_window(&("foo_window".to_owned()), open);
+            Ok(())
+        });
+
+        first_call_state.console_commands.insert("foo_window".to_owned(), cc_foo_window);
     }
 
     fn update(&mut self, _state: FrameState) {
@@ -111,4 +120,11 @@ impl SystemCallbacks for GameDirector {
         }
     }
     fn exiting(&mut self, _state: FrameState) {}
+}
+
+struct FooWindow;
+impl DebugUiWindow for FooWindow {
+    fn draw(&mut self, ui: &mut k9::egui::Ui) {
+        ui.label("hello from foo window");
+    }
 }

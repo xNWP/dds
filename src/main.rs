@@ -2,11 +2,12 @@ use std::{rc::Rc, sync::RwLock, time::Instant};
 
 use k9::{
     console_command,
+    debug_ui::{console::ConsoleCommandInterface, console::DebugUiWindow, ConsoleCommand},
     entity_component::Entity,
     graphics::{component::TexQuadBase, GraphicsComponent},
-    system::{FrameState, FirstCallState},
+    system::{FirstCallState, FrameState},
     uuid::Uuid,
-    System, SystemCallbacks, debug_ui::{DebugUiWindow, ConsoleCommand, ConsoleCommandInterface},
+    System, SystemCallbacks,
 };
 
 fn main() {
@@ -61,30 +62,36 @@ impl SystemCallbacks for GameDirector {
         log::error!("have some error");
 
         let xyz = self.xyz.clone();
-        let cc = console_command!({x: f32, y: f32, z: f32,}, |_, x, y, z| {
+        let cc = console_command!("sample foo command", {opt x: f32, opt y: f32, opt z: f32}, |_, x, y, z| {
             let mut xyz = xyz.write().unwrap();
-            xyz.0 = x;
-            xyz.1 = y;
-            xyz.2 = z;
+            if let Some(x) = x { xyz.0 = x };
+            if let Some(y) = y { xyz.1 = y };
+            if let Some(z) = z { xyz.2 = z };
             Ok(())
         });
 
-        first_call_state.console_commands.insert("foo".to_owned(), cc);
+        first_call_state
+            .console_commands
+            .insert("foo".to_owned(), cc);
 
-        let cc = console_command!({x: f32, y: f32, z: f32,}, |_, x, y, z| {
+        let cc = console_command!("sample four command.", {x: f32, y: f32, z: f32,}, |_, x, y, z| {
             Ok(())
         });
 
-        first_call_state.console_commands.insert("four".to_owned(), cc);
+        first_call_state
+            .console_commands
+            .insert("four".to_owned(), cc);
 
-        let cc = console_command!({x: f32, y: f32, z: f32,}, |_, x, y, z| {
+        let cc = console_command!("sample friday command.", {x: f32, y: f32, z: f32,}, |_, x, y, z| {
             Ok(())
         });
 
-        first_call_state.console_commands.insert("friday".to_owned(), cc);
+        first_call_state
+            .console_commands
+            .insert("friday".to_owned(), cc);
 
         for _ in 0..100 {
-            let cc = console_command!({x: f32, y: f32, z: f32,}, |_, x, y, z| {
+            let cc = console_command!("sample many command.", {x: f32, y: f32, z: f32,}, |_, x, y, z| {
                 Ok(())
             });
 
@@ -103,14 +110,22 @@ impl SystemCallbacks for GameDirector {
                 .insert(format!("many_{random_bytes}"), cc);
         }
 
-        first_call_state.debug_windows.insert("foo_window".to_owned(), Box::new(FooWindow{}));
+        first_call_state
+            .debug_windows
+            .insert("foo_window".to_owned(), Box::new(FooWindow {}));
 
-        let cc_foo_window: ConsoleCommand = console_command!({open: bool}, |mut ccf: ConsoleCommandInterface, open: bool| {
-            ccf.set_open_debug_window(&("foo_window".to_owned()), open);
-            Ok(())
-        });
+        let cc_foo_window: ConsoleCommand = console_command!(
+            "foo window command.",
+            { open: bool },
+            |mut ccf: ConsoleCommandInterface, open: bool| {
+                ccf.set_open_debug_window(&("foo_window".to_owned()), open);
+                Ok(())
+            }
+        );
 
-        first_call_state.console_commands.insert("foo_window".to_owned(), cc_foo_window);
+        first_call_state
+            .console_commands
+            .insert("foo_window".to_owned(), cc_foo_window);
     }
 
     fn update(&mut self, _state: FrameState) {
